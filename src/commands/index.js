@@ -7,18 +7,18 @@ module.exports = function(env) {
 
     async function cmd_help() {
         print('Available commands:');
-        print('  help                Show this help');
-        print('  pwd                 Print working directory');
-        print('  ls [path]           List directory');
-        print('  info <name>         Show info for root item');
-        print('  cat <name>          Show URL/content for file item');
-        print('  cd <path>           Change directory');
-        print('  mv <source> <target> Move document to folder');
-        print('  rename <old> <new>  Rename folder');
-        print('  download <name> [path] Download pad to local file');
-        print('  create <type> <title> Create new pad');
-        print('  clear               Clear the screen');
-        print('  exit                Exit the shell');
+        print('  help                       Show this help');
+        print('  pwd                        Print working directory');
+        print('  ls [path]                  List directory');
+        print('  info <name>                Show info for root item');
+        print('  cat <name>                 Show URL/content for file item');
+        print('  cd <path>                  Change directory');
+        print('  mv <source> <target>       Move document to folder');
+        print('  rename <old> <new>         Rename folder');
+        print('  download <name> [path]     Download pad to local file');
+        print('  create <type> <title> [password]  Create new pad (optionally password-protected)');
+        print('  clear                      Clear the screen');
+        print('  exit                       Exit the shell');
     }
 
     async function cmd_pwd() {
@@ -102,10 +102,15 @@ async function cmd_download(args) {
 }
 
 async function cmd_create(args) {
-    if (!args[0]) throw new Error('Usage: create <padType> <title>');
-    if (!args[1]) throw new Error('Usage: create <padType> <title>');
+    if (!args[0]) throw new Error('Usage: create <padType> <title> [password]');
+    if (!args[1]) throw new Error('Usage: create <padType> <title> [password]');
     if (typeof fs.create !== 'function') throw new Error('create not supported by filesystem');
-    const res = await fs.create(env.cwd, args[0], args[1]);
+    
+    const padType = args[0];
+    const title = args[1];
+    const password = args[2]; // Optional password parameter
+    
+    const res = await fs.create(env.cwd, padType, title, password);
     if (res && res.message) {
         print(res.message);
     }
@@ -113,6 +118,12 @@ async function cmd_create(args) {
         print('');
         print('Prepared data:');
         print(JSON.stringify(res.data, null, 2));
+    }
+    if (password) {
+        print('');
+        print('🔐 Password protection enabled');
+        print('⚠️  Users will need to enter the password when opening the document');
+        print('💡 Share the URL and password securely (preferably through different channels)');
     }
 }
 

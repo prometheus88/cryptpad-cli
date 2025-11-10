@@ -798,13 +798,13 @@ module.exports = function createDriveAdapter(options = {}) {
             
             return { message: `Downloaded ${title} to ${fileName}` };
         },
-        create: async (from, padType, title) => {
+        create: async (from, padType, title, password) => {
             // Don't wait for original readyPromise when in shared folder
             if (currentDriveRt === driveInstances[0]?.rt && !isReady) await readyPromise;
             const cwd = normalize(from);
             if (cwd !== '/') throw new Error('Only root-level create is implemented');
-            if (!padType) throw new Error('Usage: create <padType> <title>');
-            if (!title) throw new Error('Usage: create <padType> <title>');
+            if (!padType) throw new Error('Usage: create <padType> <title> [password]');
+            if (!title) throw new Error('Usage: create <padType> <title> [password]');
             
             const drive = getDriveObject();
             const container = currentFolder || (drive && drive.root);
@@ -884,6 +884,9 @@ module.exports = function createDriveAdapter(options = {}) {
             }
             
             console.log('Creating pad...');
+            if (password) {
+                console.log('🔐 Password protection enabled');
+            }
             
             // Create the pad and wait for completion
             return new Promise((resolve, reject) => {
@@ -931,20 +934,21 @@ module.exports = function createDriveAdapter(options = {}) {
                     console.log('================================\n');
                     
                     resolve({
-                        message: `Created ${padType} pad: "${title}"`,
+                        message: `Created ${padType} pad: "${title}"${password ? ' (password-protected)' : ''}`,
                         data: {
                             documentId: newDocumentId,
                             metadata: newDocumentMeta,
                             padUrl: padUrl,
                             padType: padType,
                             title: title,
+                            password: password,
                             channelId: channelId,
                             randomValue: randomValue,
                             currentUser: currentUser,
                             currentUserKey: currentUserKey
                         }
                     });
-                });
+                }, password); // Pass password as the last parameter to makePad
             });
         },
         getPath,

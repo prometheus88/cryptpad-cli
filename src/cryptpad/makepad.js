@@ -9,9 +9,17 @@ const WebSocket = require("ws");
 
 // console.log(CpCrypto.createEditCryptor2());
 
-const makePad = (type = "code", content, wsUrl, baseUrl, title, cb) => {
-    const newPadKeys = CpCrypto.createEditCryptor2();
-    const newPadUrl = baseUrl + `/${type}/#/2/${type}/edit/${newPadKeys.editKeyStr}`;
+const makePad = (type = "code", content, wsUrl, baseUrl, title, cb, password) => {
+    // Create keys with optional password protection
+    const newPadKeys = CpCrypto.createEditCryptor2(void 0, void 0, password);
+    
+    // Build URL with password appended if provided
+    let newPadUrl = baseUrl + `/${type}/#/2/${type}/edit/${newPadKeys.editKeyStr}`;
+    if (password) {
+        // Encode password for URL
+        const encodedPassword = encodeURIComponent(password);
+        newPadUrl += `/${encodedPassword}`;
+    }
     
     const getNetwork = () => {
         const f = () => {
@@ -90,16 +98,26 @@ module.exports = { makePad }
 
 
 //=============================
-// usage
+// usage examples
 /*
 const { makePad } = require('./make-pad.js')
 
 const baseUrl = 'http://localhost:3000';
 const wsUrl = 'ws://localhost:3000/cryptpad_websocket';
-const newCodeContent = '{"content":"Test"}';
 
+// Example 1: Create a public document (no password)
+const newCodeContent = '{"content":"Test"}';
 makePad('code', newCodeContent, wsUrl, baseUrl, 'My Code File', function (err, url) {
     if (err) { return console.error(err); }        
-    console.log('Pad created, available at:', url)
+    console.log('Public pad created, available at:', url)
 });
+
+// Example 2: Create a password-protected document
+const secretContent = '{"content":"Secret Information"}';
+const password = 'MySecurePassword123';
+makePad('code', secretContent, wsUrl, baseUrl, 'Secret File', function (err, url) {
+    if (err) { return console.error(err); }        
+    console.log('Password-protected pad created, available at:', url)
+    console.log('Password:', password)
+}, password);
 */
