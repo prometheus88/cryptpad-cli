@@ -1,12 +1,13 @@
 {
-  "name": "drive-api",
-  "version": "0.0.1",
-  "description": "",
+  "name": "cryptpad-cli",
+  "version": "1.0.0",
+  "description": "Command-line interface for CryptPad - authentication, messaging, and drive management",
   "license": "MIT",
-  "author": "",
+  "author": "CryptPad Contributors",
   "type": "commonjs",
   "main": "index.js",
   "bin": {
+    "cryptpad-cli": "./bin/drive-cryptpad",
     "drive-shell": "./bin/drive-shell",
     "drive-cryptpad": "./bin/drive-cryptpad"
   },
@@ -14,10 +15,15 @@
     "chainpad": "^5.2.6",
     "chainpad-crypto": "^0.3.0",
     "chainpad-listmap": "^1.2.0",
+    "chainpad-netflux": "^1.3.0",
     "hyper-json": "^1.5.0",
     "jsdom": "^27.0.0",
     "json.sortify": "github:cryptpad/JSON.sortify",
-    "ws": "^8.17.1"
+    "netflux-websocket": "^1.3.0",
+    "scrypt-async": "^2.0.1",
+    "tweetnacl": "^1.0.3",
+    "tweetnacl-util": "^0.15.1",
+    "ws": "^8.18.3"
   },
   "overrides": {
     "minimist": "~1.2.3",

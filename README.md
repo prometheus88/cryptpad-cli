@@ -1,92 +1,268 @@
+# CryptPad CLI
 
-# Experimental Command-Line interface for CryptPad
+Command-line interface for CryptPad with support for authentication, encrypted messaging, and drive management.
 
-The goal is to create a node JS program exposing a shell UI to the user with the following commands:
+## 🚀 Features
 
-- help (very difficult command telling you the commands available)
-- ls (showing the pads and folders from the current folder)
-- cd (switch to a different folder, including a shared folder)
-- info (display info about a pad or folder)
-- cat (display the content of a pad)
-- mv (move a pad to another folder, rename a pad or folder)
-- rename <old> <new>  Rename folder
-- download <name> [path] Download pad to local file
-- create <type> <title> [password] Create new pad (optionally password-protected)
-- clear               Clear the screen
-- exit                Exit the shell
+- **🔐 Authentication**: Secure login to CryptPad accounts
+- **💬 Encrypted Messaging**: Send and receive end-to-end encrypted messages
+- **👥 Contact Management**: View and interact with your CryptPad contacts
+- **📁 Drive Management**: Browse, create, and manage documents
+- **🔒 Password Protection**: Create password-protected documents
+- **🖥️ Interactive Shell**: Full-featured command-line shell
 
-## Password Protection
-
-The CLI now supports password-protected documents! When creating a new pad, you can optionally provide a password as the third argument:
+## 📦 Installation
 
 ```bash
-create pad "My Secret Document" mySecurePassword123
+# Clone the repository
+git clone https://github.com/cryptpad/cryptpad-cli.git
+cd cryptpad-cli
+
+# Install dependencies
+npm install
+
+# Make binaries executable (Linux/macOS)
+chmod +x bin/*
 ```
 
-### How Password Protection Works
+## ⚙️ Configuration
 
-- **Client-side encryption**: The password is used to derive encryption keys on the client side
-- **Zero-knowledge**: The CryptPad server never sees your password or decrypted content
-- **Password required**: Users must enter the password in an input field to access the document
-- **True access control**: The URL alone is not sufficient - the password must be known and entered separately
+The CLI requires two environment variables to connect to your CryptPad instance:
 
-### Examples
+- `CRYPTPAD_BASE_URL` - The HTTP(S) URL of your CryptPad server
+- `CRYPTPAD_WS_URL` - The WebSocket URL of your CryptPad server
+
+### Option 1: Export Environment Variables
 
 ```bash
-# Create a public document (no password)
-create pad "Public Notes"
+# For a self-hosted instance
+export CRYPTPAD_BASE_URL="http://your-server.com:3010"
+export CRYPTPAD_WS_URL="ws://your-server.com:3013"
 
-# Create a password-protected document
-create pad "Private Notes" MySecretPass123
+# For the official CryptPad instance (with SSL)
+export CRYPTPAD_BASE_URL="https://cryptpad.fr"
+export CRYPTPAD_WS_URL="wss://cryptpad.fr/cryptpad_websocket"
+```
+
+### Option 2: Use Inline Environment Variables
+
+```bash
+CRYPTPAD_BASE_URL="https://cryptpad.fr" \
+CRYPTPAD_WS_URL="wss://cryptpad.fr/cryptpad_websocket" \
+node bin/drive-cryptpad
+```
+
+### Option 3: Create a Shell Script
+
+Create a file `run-cli.sh`:
+
+```bash
+#!/bin/bash
+export CRYPTPAD_BASE_URL="https://cryptpad.fr"
+export CRYPTPAD_WS_URL="wss://cryptpad.fr/cryptpad_websocket"
+node bin/drive-cryptpad
+```
+
+Then run:
+```bash
+chmod +x run-cli.sh
+./run-cli.sh
+```
+
+## 🎯 Quick Start
+
+```bash
+# Set your CryptPad server URLs (see Configuration above)
+export CRYPTPAD_BASE_URL="https://cryptpad.fr"
+export CRYPTPAD_WS_URL="wss://cryptpad.fr/cryptpad_websocket"
+
+# Start the CLI
+node bin/drive-cryptpad
+
+# Login
+cryptpad> login your-username your-password
+
+# View your contacts
+cryptpad[your-username]> contacts
+
+# Send a message
+cryptpad[your-username]> send Alice Hello from the CLI!
+
+# Read messages
+cryptpad[your-username]> messages Alice
+
+# Create a document
+cryptpad[your-username]> create pad "My Notes"
+
+# List your documents
+cryptpad[your-username]> ls
+
+# Get help
+cryptpad[your-username]> help
+
+# Logout
+cryptpad[your-username]> logout
+
+# Exit
+cryptpad> exit
+```
+
+## 📖 Available Commands
+
+### Authentication & User Management
+- `login <username> <password>` - Login to your CryptPad account
+- `logout` - Logout from CryptPad
+- `whoami` - Show current user information
+- `status` - Show authentication and connection status
+
+### Contacts & Messaging
+- `contacts` - List all your contacts/friends
+- `messages <contact>` - Show message history with a contact
+- `send <contact> <message>` - Send an encrypted message to a contact
+
+### Drive Management
+- `ls [path]` - List documents and folders
+- `cd <path>` - Change directory
+- `pwd` - Print working directory
+- `info <name>` - Display information about a document or folder
+- `cat <name>` - Display content of a document
+- `mv <source> <target>` - Move a document to another folder
+- `rename <old> <new>` - Rename a folder
+- `download <name> [path]` - Download a document to a local file
+- `create <type> <title> [password]` - Create a new document (optionally password-protected)
+
+### Utility Commands
+- `help` - Show all available commands
+- `clear` - Clear the screen
+- `exit` - Exit the shell
+
+## 🔒 Password-Protected Documents
+
+Create documents with password protection for enhanced security:
+
+```bash
+# Create a password-protected pad
+cryptpad> create pad "Secret Notes" MySecurePassword123
 
 # Create a password-protected code document
-create code "Secret Code" StrongP@ssw0rd
+cryptpad> create code "Private Code" StrongP@ssw0rd
 ```
 
-### Security Considerations
+**Security Notes:**
+- 🔐 Passwords are used for client-side encryption
+- 🔑 Both the URL and password are required to access the document
+- 💡 Share URLs and passwords through different channels for maximum security
+- ⚠️ Store passwords securely (use a password manager)
 
-🔒 **Important**: Password-protected documents require BOTH the URL and the password to access. The password must be entered manually into an input field when opening the document.
+## 💬 Messaging Examples
 
-✅ **Best for**: 
-- Protecting sensitive documents from unauthorized access
-- Ensuring only users with the password can view content
-- Zero-knowledge encryption requirements
-- Protecting documents from server administrators
+### View Contacts
+```bash
+cryptpad[alice]> contacts
 
-✅ **Security benefits**:
-- URL alone cannot access the document - password is required
-- Password must be shared separately from the URL
-- Multiple layers of protection (URL + password)
+Contacts (3):
 
-⚠️ **Important to know**:
-- Store passwords securely (password manager, encrypted storage)
-- Share URLs and passwords through different channels for maximum security
-- Once someone has both URL and password, they can access the document
-
-### Programmatic Usage
-
-You can also use the password feature programmatically via the `makePad` function:
-
-```javascript
-const { makePad } = require('./src/cryptpad/makepad');
-
-const type = 'pad';
-const content = '{}'; // Initial content
-const wsUrl = 'ws://your-server.com/cryptpad_websocket';
-const baseUrl = 'https://your-server.com';
-const title = 'My Document';
-const password = 'SecurePassword123'; // Optional
-
-makePad(type, content, wsUrl, baseUrl, title, (err, url) => {
-    if (err) {
-        console.error('Error:', err);
-    } else {
-        console.log('Document created:', url);
-        console.log('Password:', password);
-        // Note: Users will need to enter the password when opening the URL
-        // The URL and password should be shared securely (preferably separately)
-    }
-}, password);
+   1. Bob                            a5FwzTMWb7...
+   2. Charlie                        vm+/CDgq7R...
+   3. Dave                           rWkb52uWJK...
 ```
- 
-<img width="1008" height="473" alt="image" src="https://github.com/user-attachments/assets/bad41c26-ece3-429c-b311-202ec05ea23a" />
+
+### Read Message History
+```bash
+cryptpad[alice]> messages Bob
+Loading messages with Bob...
+
+=== Messages with Bob ===
+
+[2024-11-14 15:30:45] You: Hey Bob!
+[2024-11-14 15:31:12] Bob: Hi Alice, how are you?
+[2024-11-14 15:31:30] You: Great! Want to collaborate on a document?
+[2024-11-14 15:32:00] Bob: Sure, send me the link!
+```
+
+### Send a Message
+```bash
+cryptpad[alice]> send Bob Check out this document: https://cryptpad.fr/pad/#/2/pad/edit/...
+Sending message to Bob...
+✓ Message sent to Bob
+```
+
+## 🏗️ Architecture
+
+```
+cryptpad-cli/
+├── bin/
+│   ├── cryptpad-cli        # Main executable (symlink to drive-cryptpad)
+│   └── drive-cryptpad      # CLI entry point
+├── src/
+│   ├── cryptpad/           # Core CryptPad modules
+│   │   ├── auth.js         # Authentication & login
+│   │   ├── messenger.js    # Encrypted messaging
+│   │   ├── contacts.js     # Contact management
+│   │   ├── session.js      # Session state
+│   │   ├── drive.js        # Drive operations
+│   │   └── ...
+│   ├── commands/           # CLI command implementations
+│   │   └── index.js
+│   ├── fs/                 # Filesystem adapters
+│   └── shell.js            # Interactive shell
+└── package.json
+```
+
+## 🔐 Security
+
+- **End-to-End Encryption**: All messages and documents are encrypted client-side
+- **Curve25519**: Used for key exchange in messaging
+- **XSalsa20-Poly1305**: Used for message encryption
+- **Ed25519**: Used for signatures
+- **Scrypt**: Used for password-based key derivation
+- **Zero-Knowledge**: Server never sees plaintext content or passwords
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit pull requests or open issues.
+
+## 📄 License
+
+MIT License - see LICENSE file for details
+
+## 🔗 Resources
+
+- [CryptPad Official Site](https://cryptpad.fr)
+- [CryptPad GitHub](https://github.com/cryptpad/cryptpad)
+- [CryptPad Documentation](https://docs.cryptpad.fr)
+
+## 💡 Tips
+
+1. **Use Tab Completion**: The shell supports tab completion for commands
+2. **Command History**: Use Up/Down arrows to navigate command history
+3. **Batch Operations**: Create scripts to automate repetitive tasks
+4. **Environment Setup**: Create a `.env` file or shell aliases for your server configuration
+5. **Security**: Always use HTTPS/WSS URLs for production instances
+
+## 🐛 Troubleshooting
+
+### "Server URLs not configured" Error
+Make sure you've set both `CRYPTPAD_BASE_URL` and `CRYPTPAD_WS_URL` environment variables before starting the CLI.
+
+### Login Fails
+- Verify your username and password are correct
+- Check that your CryptPad instance is accessible
+- Ensure WebSocket connections are not blocked by a firewall
+
+### Connection Issues
+- Confirm the server URLs are correct (HTTP/HTTPS and WS/WSS must match)
+- Check that the CryptPad server is running
+- Verify network connectivity
+
+### Message Not Received
+- Ensure both users are contacts/friends on CryptPad
+- Check that the recipient is online or has accessed CryptPad recently
+- Messages are end-to-end encrypted and stored on the server
+
+## 📚 Additional Documentation
+
+- [Authentication & Messaging Guide](./AUTHENTICATION_MESSAGING.md)
+- [Implementation Summary](./IMPLEMENTATION_SUMMARY.md)
+- [Getting Started Guide](./GETTING_STARTED.md)
+- [Quick Reference](./QUICK_REFERENCE.md)

@@ -1,20 +1,55 @@
 #!/usr/bin/env node
 const { createShell } = require('../src/shell');
 const createDriveAdapter = require('../src/fs/drive-adapter');
+const session = require('../src/cryptpad/session');
 
-const cpServer = process.env.CP_SERVER || 'freemium.cryptpad.fr';
-const driveUri = process.env.CP_DRIVE_URI || '/drive/#/2/drive/edit/5+9MFiXfG0w8T-g6GDQPefnC/';
-const cpURL = 'https://' + cpServer;
-const driveUrl = cpURL + driveUri;
-const wsURL = 'wss://' + cpServer + '/cryptpad_websocket';
+// Get CryptPad server URLs from environment variables
+const baseUrl = process.env.CRYPTPAD_BASE_URL;
+const wsUrl = process.env.CRYPTPAD_WS_URL;
 
-const fs = createDriveAdapter({ driveUrl, wsURL, serverOrigin: driveUrl });
-fs.ready().then(() => {
-    const shell = createShell(fs, { prompt: 'cp> ' });
-    shell.start();
-}).catch((err) => {
-    console.error('ERROR');
-    console.error(err);
+if (!baseUrl || !wsUrl) {
+    console.error('Error: CryptPad server URLs not configured!');
+    console.error('');
+    console.error('Please set the following environment variables:');
+    console.error('  CRYPTPAD_BASE_URL  - HTTP URL of your CryptPad instance');
+    console.error('  CRYPTPAD_WS_URL    - WebSocket URL of your CryptPad instance');
+    console.error('');
+    console.error('Example:');
+    console.error('  export CRYPTPAD_BASE_URL="https://cryptpad.example.com"');
+    console.error('  export CRYPTPAD_WS_URL="wss://cryptpad.example.com/cryptpad_websocket"');
+    console.error('');
+    console.error('Or run with inline env vars:');
+    console.error('  CRYPTPAD_BASE_URL="https://cryptpad.example.com" \\');
+    console.error('  CRYPTPAD_WS_URL="wss://cryptpad.example.com/cryptpad_websocket" \\');
+    console.error('  cryptpad-cli');
+    console.error('');
+    process.exit(1);
+}
+
+console.log('='.repeat(60));
+console.log('CryptPad CLI - Command Line Interface');
+console.log('='.repeat(60));
+console.log('Server: ' + baseUrl);
+console.log('WebSocket: ' + wsUrl);
+console.log('');
+console.log('Type "help" for available commands');
+console.log('Type "login <username> <password>" to authenticate');
+console.log('='.repeat(60));
+console.log('');
+
+// Create a dummy drive adapter for when not authenticated
+// This will be replaced with the user's actual drive after login
+const dummyDriveUrl = baseUrl + '/drive/#/2/drive/edit/AAAAAAAAAAAAAAAAAAAAAA/AAAAAAAAAAAAAAAAAAAAAA/';
+const fs = createDriveAdapter({ driveUrl: dummyDriveUrl, wsURL: wsUrl, serverOrigin: baseUrl });
+
+// Start shell immediately without waiting for drive connection
+// Users will need to login to access their drive
+const shell = createShell(fs, { 
+    prompt: 'cryptpad> ',
+    wsUrl: wsUrl,
+    baseUrl: baseUrl
 });
+
+shell.start();
 
 

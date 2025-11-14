@@ -1,13 +1,30 @@
 const readline = require('readline');
+const session = require('./cryptpad/session');
 
 function createShell(filesystemAdapter, options = {}) {
     const env = {
         fs: filesystemAdapter,
         cwd: '/',
-        prompt: options.prompt || 'drive> ',
+        prompt: options.prompt || 'cryptpad> ',
         commands: {},
         stdout: options.stdout || process.stdout,
         stderr: options.stderr || process.stderr,
+        wsUrl: options.wsUrl || 'ws://5.78.77.95:3013',
+        baseUrl: options.baseUrl || 'http://5.78.77.95:3010',
+        rl: null
+    };
+
+    // Function to update prompt based on authentication status
+    env.updatePrompt = function() {
+        if (session.isAuthenticated()) {
+            const username = session.getUsername();
+            env.prompt = 'cryptpad[' + username + ']> ';
+        } else {
+            env.prompt = 'cryptpad> ';
+        }
+        if (env.rl) {
+            env.rl.setPrompt(env.prompt);
+        }
     };
 
     const commands = require('./commands')(env);
@@ -80,6 +97,9 @@ function createShell(filesystemAdapter, options = {}) {
     }
 
     function start() {
+        // Update prompt based on any saved session
+        env.updatePrompt();
+        
         const rl = readline.createInterface({
             input: process.stdin,
             output: process.stdout,
@@ -427,6 +447,9 @@ function createShell(filesystemAdapter, options = {}) {
                 return [[], line];
             }
         });
+
+        // Store rl reference in env for prompt updates
+        env.rl = rl;
 
         rl.on('line', (line) => {
             exec(line);

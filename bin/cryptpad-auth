@@ -1,0 +1,55 @@
+#!/usr/bin/env node
+// Simplified entry point for authentication and messaging only
+// This avoids the jsdom compatibility issues
+
+const { createShell } = require('../src/shell');
+const session = require('../src/cryptpad/session');
+
+// Use self-hosted instance by default, or override with env vars
+const baseUrl = process.env.CP_BASE_URL || 'http://5.78.77.95:3010';
+const wsUrl = process.env.CP_WS_URL || 'ws://5.78.77.95:3013';
+
+console.log('='.repeat(60));
+console.log('CryptPad CLI - Authentication & Messaging');
+console.log('='.repeat(60));
+console.log('Server: ' + baseUrl);
+console.log('WebSocket: ' + wsUrl);
+console.log('');
+console.log('Available commands:');
+console.log('  login <username> <password>  - Login to CryptPad');
+console.log('  contacts                     - List your contacts');
+console.log('  messages <contact>           - View message history');
+console.log('  send <contact> <message>     - Send a message');
+console.log('  whoami                       - Show user info');
+console.log('  status                       - Connection status');
+console.log('  logout                       - Logout');
+console.log('  help                         - Show all commands');
+console.log('  exit                         - Exit');
+console.log('='.repeat(60));
+console.log('');
+
+// Create a minimal filesystem adapter that won't cause issues
+const minimalFs = {
+    ready: () => Promise.resolve(),
+    join: (a, b) => b || a,
+    list: () => Promise.resolve([]),
+    listDisplay: () => Promise.resolve([]),
+    changeDir: () => Promise.resolve('/'),
+    getPath: () => '/',
+    info: () => Promise.reject(new Error('Drive commands require full CLI')),
+    cat: () => Promise.reject(new Error('Drive commands require full CLI')),
+    mv: () => Promise.reject(new Error('Drive commands require full CLI')),
+    rename: () => Promise.reject(new Error('Drive commands require full CLI')),
+    download: () => Promise.reject(new Error('Drive commands require full CLI')),
+    create: () => Promise.reject(new Error('Drive commands require full CLI'))
+};
+
+// Start shell with minimal adapter
+const shell = createShell(minimalFs, { 
+    prompt: 'cryptpad> ',
+    wsUrl: wsUrl,
+    baseUrl: baseUrl
+});
+
+shell.start();
+
