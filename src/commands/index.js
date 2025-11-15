@@ -2,6 +2,7 @@ const auth = require('../cryptpad/auth');
 const session = require('../cryptpad/session');
 const contacts = require('../cryptpad/contacts');
 const messenger = require('../cryptpad/messenger');
+const contactManager = require('../cryptpad/contact-manager');
 
 module.exports = function(env) {
     const { fs } = env;
@@ -21,6 +22,11 @@ module.exports = function(env) {
         print('');
         print('Contacts & Messaging:');
         print('  contacts                           List all contacts');
+        print('  profile                            Show your shareable profile URL');
+        print('  pending                            List pending friend requests');
+        print('  remove <contact>                   Remove a contact/friend');
+        print('  accept <contact>                   Accept pending friend request');
+        print('  reject <contact>                   Reject pending friend request');
         print('  messages <contact>                 Show message history with contact');
         print('  send <contact> <message>           Send message to contact');
         print('');
@@ -260,6 +266,163 @@ async function cmd_create(args) {
     }
 
     // Contacts & Messaging commands
+    async function cmd_profile() {
+        if (!session.isAuthenticated()) {
+            throw new Error('Not authenticated. Use "login" command first.');
+        }
+
+        const profileUrls = contactManager.getProfileUrls();
+        
+        if (!profileUrls) {
+            print('');
+            print('❌ No profile set up yet.');
+            print('   Create one through the web interface at:');
+            print('   ' + (env.baseUrl || 'https://cryptpad.fr') + '/profile/');
+            print('');
+            return;
+        }
+
+        const baseUrl = env.baseUrl || 'https://cryptpad.fr';
+        
+        print('');
+        print('='.repeat(60));
+        print('👤 Your CryptPad Profile');
+        print('='.repeat(60));
+        print('');
+        print('📝 Edit Your Profile:');
+        print('   ' + baseUrl + profileUrls.edit);
+        print('');
+        print('🔗 Share Your Profile (Public View):');
+        print('   ' + baseUrl + profileUrls.view);
+        print('');
+        print('💡 Anyone with the view link can see your public profile');
+        print('   and send you a friend request!');
+        print('');
+    }
+
+    async function cmd_pending() {
+        if (!session.isAuthenticated()) {
+            throw new Error('Not authenticated. Use "login" command first.');
+        }
+
+        print('');
+        print('📨 Pending Friend Requests:');
+        print('  Reading notifications mailbox...');
+        print('');
+
+        return new Promise((resolve, reject) => {
+            contactManager.getPendingRequests(env.wsUrl, (err, pending) => {
+                if (err) {
+                    print('✗ Failed to read pending requests: ' + err.message);
+                    reject(err);
+                    return;
+                }
+
+                if (pending.length === 0) {
+                    print('  No pending requests');
+                } else {
+                    pending.forEach((request, index) => {
+                        const num = String(index + 1).padStart(3, ' ');
+                        print('  ' + num + '. ' + request.displayName);
+                        print('       Curve Public: ' + request.curvePublic.slice(0, 20) + '...');
+                        if (request.time) {
+                            const date = new Date(request.time);
+                            print('       Received: ' + date.toLocaleString());
+                        }
+                        print('       Use "accept ' + request.displayName + '" or "reject ' + request.displayName + '"');
+                        print('');
+                    });
+                }
+                
+                print('');
+                resolve();
+            });
+        });
+    }
+
+    async function cmd_remove(args) {
+        if (!session.isAuthenticated()) {
+            throw new Error('Not authenticated. Use "login" command first.');
+        }
+
+        if (!args[0]) {
+            throw new Error('Usage: remove <contact>');
+        }
+
+        const identifier = args[0];
+        
+        print('Removing contact: ' + identifier + '...');
+
+        return new Promise((resolve, reject) => {
+            contactManager.removeFriend(identifier, (err, result) => {
+                if (err) {
+                    print('✗ Failed to remove contact: ' + err.message);
+                    reject(err);
+                    return;
+                }
+
+                print('✓ Removed ' + result.name + ' from your contacts');
+                print('  Curve Public: ' + result.curvePublic.slice(0, 20) + '...');
+                resolve();
+            });
+        });
+    }
+
+    async function cmd_accept(args) {
+        if (!session.isAuthenticated()) {
+            throw new Error('Not authenticated. Use "login" command first.');
+        }
+
+        if (!args[0]) {
+            throw new Error('Usage: accept <contact>');
+        }
+
+        const identifier = args[0];
+        
+        print('Accepting friend request from: ' + identifier + '...');
+
+        return new Promise((resolve, reject) => {
+            contactManager.acceptFriendRequest(identifier, (err, result) => {
+                if (err) {
+                    print('✗ Failed to accept request: ' + err.message);
+                    reject(err);
+                    return;
+                }
+
+                print('✓ Accepted friend request from ' + result.name);
+                print('  You can now message them using: send ' + result.name + ' <message>');
+                resolve();
+            });
+        });
+    }
+
+    async function cmd_reject(args) {
+        if (!session.isAuthenticated()) {
+            throw new Error('Not authenticated. Use "login" command first.');
+        }
+
+        if (!args[0]) {
+            throw new Error('Usage: reject <contact>');
+        }
+
+        const identifier = args[0];
+        
+        print('Rejecting friend request from: ' + identifier + '...');
+
+        return new Promise((resolve, reject) => {
+            contactManager.rejectFriendRequest(identifier, (err, result) => {
+                if (err) {
+                    print('✗ Failed to reject request: ' + err.message);
+                    reject(err);
+                    return;
+                }
+
+                print('✓ Rejected friend request from ' + result.name);
+                resolve();
+            });
+        });
+    }
+
     async function cmd_contacts() {
         if (!session.isAuthenticated()) {
             throw new Error('Not authenticated. Use "login" command first.');
@@ -395,6 +558,11 @@ async function cmd_create(args) {
         status: cmd_status,
         // Contacts & Messaging
         contacts: cmd_contacts,
+        profile: cmd_profile,
+        pending: cmd_pending,
+        remove: cmd_remove,
+        accept: cmd_accept,
+        reject: cmd_reject,
         messages: cmd_messages,
         send: cmd_send,
         // Drive Management
