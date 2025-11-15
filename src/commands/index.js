@@ -3,6 +3,7 @@ const session = require('../cryptpad/session');
 const contacts = require('../cryptpad/contacts');
 const messenger = require('../cryptpad/messenger');
 const contactManager = require('../cryptpad/contact-manager');
+const realtimeEditor = require('../cryptpad/realtime-editor');
 
 module.exports = function(env) {
     const { fs } = env;
@@ -35,6 +36,7 @@ module.exports = function(env) {
         print('  ls [path]                          List directory');
         print('  info <name>                        Show info for root item');
         print('  cat <name>                         Show URL/content for file item');
+        print('  edit <name> [editor]               Edit document in real-time (collaborative)');
         print('  cd <path>                          Change directory');
         print('  mv <source> <target>               Move document to folder');
         print('  rename <old> <new>                 Rename folder');
@@ -95,6 +97,58 @@ async function cmd_cat(args) {
         print('');
         print(String(res.content));
     }
+}
+
+async function cmd_edit(args) {
+    if (!args[0]) throw new Error('Usage: edit <name> [editor]');
+    if (typeof fs.cat !== 'function') throw new Error('edit not supported by filesystem');
+    
+    const name = args[0];
+    const editor = args[1]; // Optional custom editor
+    
+    print('');
+    print('🚀 Starting real-time collaborative editing...');
+    print('');
+    
+    // Get the document URL using cat
+    const res = await fs.cat(env.cwd, name, () => {});
+    if (!res || !res.url) {
+        throw new Error('Could not find document URL');
+    }
+    
+    const padUrl = res.url;
+    print(`Document: ${name}`);
+    print(`URL: ${padUrl}`);
+    print('');
+    
+    // Create temporary file for editing
+    const os = require('os');
+    const path = require('path');
+    const crypto = require('crypto');
+    
+    const tempId = crypto.randomBytes(8).toString('hex');
+    const tempPath = path.join(os.tmpdir(), `cryptpad-${tempId}.txt`);
+    
+    // Start real-time editing
+    return new Promise((resolve, reject) => {
+        realtimeEditor.startRealtimeEdit(
+            padUrl,
+            env.wsUrl,
+            tempPath,
+            editor,
+            (err, result) => {
+                print('');
+                if (err) {
+                    print('✗ Error during editing: ' + err.message);
+                    reject(err);
+                } else {
+                    print('✓ Editing session completed');
+                    print('  All changes have been saved to CryptPad');
+                    resolve();
+                }
+            }
+        );
+    });
 }
 
 async function cmd_mv(args) {
@@ -571,6 +625,7 @@ async function cmd_create(args) {
         ls: cmd_ls,
         info: cmd_info,
         cat: cmd_cat,
+        edit: cmd_edit,
         cd: cmd_cd,
         mv: cmd_mv,
         rename: cmd_rename,

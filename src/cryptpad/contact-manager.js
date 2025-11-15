@@ -2,6 +2,7 @@
 
 const session = require('./session');
 const mailbox = require('./mailbox');
+const mailboxSender = require('./mailbox-sender');
 
 /**
  * Get user's shareable profile URLs
@@ -104,131 +105,75 @@ const removeFriend = (identifier, callback) => {
 
 /**
  * Accept a pending friend request
- * Note: This moves the friend from friends_pending to friends
+ * Note: This moves the friend from friends_pending to friends and sends acceptance message
  */
-const acceptFriendRequest = (identifier, callback) => {
+const acceptFriendRequest = (wsUrl, identifier, callback) => {
     if (!session.isAuthenticated()) {
         return callback(new Error('Not authenticated'));
     }
     
-    const proxy = session.getProxy();
-    
-    if (!proxy.friends_pending) {
-        return callback(new Error('No pending requests'));
-    }
-    
-    // Find pending request
-    let curvePublicToAccept = null;
-    let requestData = null;
-    
-    if (proxy.friends_pending[identifier]) {
-        curvePublicToAccept = identifier;
-        requestData = proxy.friends_pending[identifier];
-    } else {
-        // Search by display name
-        const normalizedIdentifier = identifier.toLowerCase();
-        for (const [curvePublic, data] of Object.entries(proxy.friends_pending)) {
-            if (data.displayName && 
-                data.displayName.toLowerCase() === normalizedIdentifier) {
-                curvePublicToAccept = curvePublic;
-                requestData = data;
-                break;
-            }
+    // First, get the pending request from mailbox
+    mailbox.getPendingRequests(wsUrl, (err, pending) => {
+        if (err) {
+            return callback(err);
         }
-    }
-    
-    if (!curvePublicToAccept) {
-        return callback(new Error(`Pending request not found: ${identifier}`));
-    }
-    
-    // Move from pending to friends
-    proxy.friends = proxy.friends || {};
-    proxy.friends[curvePublicToAccept] = requestData;
-    delete proxy.friends_pending[curvePublicToAccept];
-    
-    // Sync the changes
-    const rt = session.getRealtime();
-    if (rt && rt.sync) {
-        rt.sync();
         
-        setTimeout(() => {
-            callback(null, {
-                accepted: true,
-                name: requestData.displayName,
-                curvePublic: curvePublicToAccept
-            });
-        }, 500);
-    } else {
-        callback(null, {
-            accepted: true,
-            name: requestData.displayName,
-            curvePublic: curvePublicToAccept,
-            note: 'Changes queued but sync unavailable'
-        });
-    }
+        // Find the request to accept
+        let requestToAccept = null;
+        
+        // Try exact match on display name first
+        requestToAccept = pending.find(req => 
+            req.displayName.toLowerCase() === identifier.toLowerCase()
+        );
+        
+        // Try curve public key match
+        if (!requestToAccept) {
+            requestToAccept = pending.find(req => req.curvePublic === identifier);
+        }
+        
+        if (!requestToAccept) {
+            return callback(new Error(`Pending request not found: ${identifier}`));
+        }
+        
+        // Use mailbox sender to accept
+        mailboxSender.acceptFriendRequest(requestToAccept, callback);
+    });
 };
 
 /**
  * Reject/decline a pending friend request
  */
-const rejectFriendRequest = (identifier, callback) => {
+const rejectFriendRequest = (wsUrl, identifier, callback) => {
     if (!session.isAuthenticated()) {
         return callback(new Error('Not authenticated'));
     }
     
-    const proxy = session.getProxy();
-    
-    if (!proxy.friends_pending) {
-        return callback(new Error('No pending requests'));
-    }
-    
-    // Find pending request
-    let curvePublicToReject = null;
-    let requestName = null;
-    
-    if (proxy.friends_pending[identifier]) {
-        curvePublicToReject = identifier;
-        requestName = proxy.friends_pending[identifier].displayName;
-    } else {
-        // Search by display name
-        const normalizedIdentifier = identifier.toLowerCase();
-        for (const [curvePublic, data] of Object.entries(proxy.friends_pending)) {
-            if (data.displayName && 
-                data.displayName.toLowerCase() === normalizedIdentifier) {
-                curvePublicToReject = curvePublic;
-                requestName = data.displayName;
-                break;
-            }
+    // First, get the pending request from mailbox
+    mailbox.getPendingRequests(wsUrl, (err, pending) => {
+        if (err) {
+            return callback(err);
         }
-    }
-    
-    if (!curvePublicToReject) {
-        return callback(new Error(`Pending request not found: ${identifier}`));
-    }
-    
-    // Remove from pending
-    delete proxy.friends_pending[curvePublicToReject];
-    
-    // Sync the changes
-    const rt = session.getRealtime();
-    if (rt && rt.sync) {
-        rt.sync();
         
-        setTimeout(() => {
-            callback(null, {
-                rejected: true,
-                name: requestName,
-                curvePublic: curvePublicToReject
-            });
-        }, 500);
-    } else {
-        callback(null, {
-            rejected: true,
-            name: requestName,
-            curvePublic: curvePublicToReject,
-            note: 'Changes queued but sync unavailable'
-        });
-    }
+        // Find the request to reject
+        let requestToReject = null;
+        
+        // Try exact match on display name first
+        requestToReject = pending.find(req => 
+            req.displayName.toLowerCase() === identifier.toLowerCase()
+        );
+        
+        // Try curve public key match
+        if (!requestToReject) {
+            requestToReject = pending.find(req => req.curvePublic === identifier);
+        }
+        
+        if (!requestToReject) {
+            return callback(new Error(`Pending request not found: ${identifier}`));
+        }
+        
+        // Use mailbox sender to decline
+        mailboxSender.declineFriendRequest(requestToReject, callback);
+    });
 };
 
 module.exports = {
@@ -236,6 +181,7 @@ module.exports = {
     getPendingRequests,
     removeFriend,
     acceptFriendRequest,
-    rejectFriendRequest
+    rejectFriendRequest,
+    sendFriendRequest: mailboxSender.sendFriendRequest
 };
 

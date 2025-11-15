@@ -60,8 +60,17 @@ class Session {
         return this.rt;
     }
 
-    getNetwork() {
+    async getNetwork() {
+        // Network might be a Promise, resolve it
+        if (this.network && typeof this.network.then === 'function') {
+            return await this.network;
+        }
         return this.network;
+    }
+
+    async getHistoryKeeper() {
+        const network = await this.getNetwork();
+        return network ? network.historyKeeper : null;
     }
 
     clear() {
